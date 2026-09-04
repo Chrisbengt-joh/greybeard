@@ -24,7 +24,7 @@ Requires Node.js 18 or later on your PATH; there are no dependencies.
 
 ## What it does
 
-Greybeard is three hooks and fourteen skills.
+Greybeard is four hooks and fourteen skills.
 
 **At session start** the ruleset is injected as context, together with the
 project's `GREYBEARD.md` if there is one. The same hook runs at the start
@@ -48,6 +48,12 @@ entry in `GREYBEARD.md`. If it does, the entry is shown to the agent right
 then, before the change is made. That is the greybeard saying "don't touch
 it" at the exact moment it matters. In `ultra` mode the change also needs
 your explicit go-ahead.
+
+**Before a commit** a second `PreToolUse` hook reads `GREYBEARD.md` and
+says what should not be committed: secrets, internal hostnames, or an entry
+that describes how to break something rather than what breaks. It speaks
+once per version of the file, not once per commit, and only asks for
+confirmation when what it found looks like a credential.
 
 **On every prompt** a `UserPromptSubmit` hook tracks `/greybeard` level
 switches so the hooks and the model agree on the level.
@@ -165,6 +171,17 @@ Rules of the file:
 - Short. It is loaded every session. Above 12 000 characters the agent is
   told to read the file instead.
 
+**What does not go in it.** The file is committed, and in a public repo a
+commit is permanent: deleting an entry later leaves it in the history, the
+clones and the forks. No credentials or keys. No internal hostnames, private
+addresses, or customer names — reference a ticket by id and let the reader
+with access go and look. Write *what breaks*, not *how to break it*: "payments
+drop silently under load" is an entry, repro steps for an auth bypass are not.
+If the honest entry would describe an unfixed hole, the entry is not the risk,
+the code is — write a stub pointing at a private ticket and fix the code. The
+commit hook checks for the obvious cases; it does not replace reading the
+entry you just wrote.
+
 Greybeard writes to it when it learns something (`full` and `ultra`), when
 you ask (`/greybeard-remember`), after a postmortem, and when a debug
 session ends in a workaround someone will later want to remove. Commit it
@@ -222,7 +239,7 @@ was not in the incident channel.
 
 ```
 .claude-plugin/       plugin and marketplace manifests
-hooks/hooks.json      SessionStart, SubagentStart, UserPromptSubmit, PreToolUse
+hooks/hooks.json      SessionStart, SubagentStart, UserPromptSubmit, PreToolUse x2
 hooks/*.js            the hooks; no dependencies, Node 18+
 skills/*/SKILL.md     the ruleset and the fourteen commands
 examples/GREYBEARD.md a memory file to copy from
