@@ -34,3 +34,15 @@ change them.
 - **If restored:** A subagent or session started from another directory gets
   a foreign project's institutional memory presented as its own.
 - **Since:** 2026-09-04
+
+## hooks/hooks.json
+
+- **What:** The `PreToolUse` matcher lists `PowerShell` alongside `Bash`.
+- **Why:** Windows sessions get a `PowerShell` tool as well as, or instead
+  of, `Bash`. A matcher without it means the guard never runs for shell
+  commands on Windows: `Remove-Item` against a documented fence goes through
+  with no warning and no error. Found 2026-09-04.
+- **If removed:** Silent gap on one platform only, which is the kind that
+  survives a green CI run. `PreToolUse matcher covers the shell tools on
+  every platform` in `tests/hooks.test.js` fails if a tool drops out.
+- **Since:** 2026-09-04
