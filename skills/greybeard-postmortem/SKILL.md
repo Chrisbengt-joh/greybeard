@@ -63,6 +63,14 @@ Mitigate:      - <runbook, flag, script>
 Recorded:      GREYBEARD.md → <section>
 ```
 
+## What does not go in
+
+The entry is committed and, in a public repo, permanent. No secrets, no
+internal hostnames or customer names, no repro steps for a live weakness —
+what breaks, not how to break it. If the honest entry would describe an
+unfixed hole, write a stub pointing at a private ticket and tell the user
+what you left out. See `greybeard-remember` for the full rule.
+
 ## Voice
 
 No names in the root cause. No adjectives. The incident already happened;
