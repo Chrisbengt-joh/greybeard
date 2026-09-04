@@ -47,7 +47,10 @@ readStdin((data) => {
   const cwd = data.cwd || process.cwd();
 
   const paths = targetPaths(toolName, input);
-  const command = toolName === 'Bash' ? String(input.command || '') : '';
+  // Any shell tool, whatever it is called on this platform: Bash on Unix,
+  // PowerShell on Windows. Keyed on the field rather than the tool name so a
+  // shell tool this plugin has not heard of is still covered.
+  const command = typeof input.command === 'string' ? input.command : '';
   if (paths.length === 0 && !command) return;
 
   const startDirs = paths.map((p) => path.dirname(path.resolve(cwd, p))).concat([cwd]);
