@@ -72,6 +72,28 @@ Commit hashes and issue numbers when known.
    invent them; leave a field out rather than guess.
 5. Show the entry as written. One line, no ceremony.
 
+## What does not go in
+
+`GREYBEARD.md` is committed. Everyone who can read the repo can read it, and
+in a public repo that is everyone, permanently: deleting an entry later does
+not remove it from the history, the clones, or the forks.
+
+- **No secrets.** No credentials, keys, tokens, connection strings, or URLs
+  with a password in them. Not even expired ones.
+- **No internal topology.** No internal hostnames, private IPs, bucket
+  names, or customer names. Reference the ticket or incident by id and let
+  the reader with access go and look.
+- **What breaks, not how to break it.** "Payments drop silently under load"
+  is an entry. Repro steps for an auth bypass are not.
+- **A live vulnerability is not a documentation problem.** If the honest
+  entry would be "we do not validate this and anyone can post to it", the
+  entry is not the risk; the code is. Say so to the user, write a stub that
+  points at a private ticket, and leave the detail where access is
+  controlled.
+
+If an entry cannot be written without one of these, write the stub and tell
+the user what you left out and where it should live instead.
+
 ## Voice
 
 An entry is evidence for someone in three years, not a story. Specific
