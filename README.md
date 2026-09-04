@@ -79,6 +79,11 @@ that way." Greybeard is built to be the first kind:
 | **full** | Finds the why before changing. Warns with scenarios. Does not delete a fence with an unknown reason until you confirm. Keeps `GREYBEARD.md` up to date. Default. |
 | **ultra** | No code until the why is answered. Rewrites and big-bang migrations get a strangler-fig plan instead. Every change to a file with a `GREYBEARD.md` entry needs an explicit go-ahead. |
 
+The level is per session: two Claude Code windows keep their own, so
+switching level or turning greybeard off in one leaves the other alone. The
+flag lives in `~/.claude/greybeard-modes/`, and files for sessions untouched
+for a week are swept at startup.
+
 "stop greybeard" or "normal mode" in plain language also turns it off;
 "greybeard on" turns it back on. `GREYBEARD_DEFAULT_MODE=off` in the
 environment disables it for every new session.
