@@ -290,6 +290,15 @@ test('guard survives a BOM on stdin', () => {
 
 // ---- manifests -----------------------------------------------------------
 
+test('the commit scan runs on the shell tools', () => {
+  const cfg = JSON.parse(fs.readFileSync(path.join(HOOKS, 'hooks.json'), 'utf8'));
+  const group = cfg.hooks.PreToolUse.find((g) => g.hooks.some((h) => h.command.includes('greybeard-commit-scan.js')));
+  assert.ok(group, 'the commit scan must be registered on PreToolUse');
+  for (const tool of ['Bash', 'PowerShell']) {
+    assert.ok(new RegExp('^(?:' + group.matcher + ')$').test(tool), 'matcher misses ' + tool);
+  }
+});
+
 test('hooks.json references scripts that exist', () => {
   const cfg = JSON.parse(fs.readFileSync(path.join(HOOKS, 'hooks.json'), 'utf8'));
   for (const event of Object.keys(cfg.hooks)) {
@@ -315,7 +324,9 @@ test('every skill has frontmatter with a matching name', () => {
 
 test('PreToolUse matcher covers the shell tools on every platform', () => {
   const cfg = JSON.parse(fs.readFileSync(path.join(HOOKS, 'hooks.json'), 'utf8'));
-  const matcher = cfg.hooks.PreToolUse[0].matcher;
+  const group = cfg.hooks.PreToolUse.find((g) => g.hooks.some((h) => h.command.includes('greybeard-guard.js')));
+  assert.ok(group, 'the guard must be registered on PreToolUse');
+  const matcher = group.matcher;
   // Windows sessions get a PowerShell tool instead of Bash; if it is not in
   // the matcher the guard never runs for shell commands there.
   for (const tool of ['Edit', 'Write', 'MultiEdit', 'NotebookEdit', 'Bash', 'PowerShell']) {
@@ -368,4 +379,71 @@ test('sweepStaleModes removes flags older than the cutoff and keeps the rest', (
   runtime.sweepStaleModes();
   assert.equal(readFlag('old-session'), null);
   assert.equal(readFlag('live-session'), 'full');
+});
+
+// ---- commit scan ---------------------------------------------------------
+
+function commit(command, sessionId) {
+  return runHook('greybeard-commit-scan.js', {
+    tool_name: 'Bash',
+    tool_input: { command: command || 'git commit -m "x"' },
+    cwd: projectDir,
+    session_id: sessionId,
+  });
+}
+
+const LEAKY = MEMORY + `
+
+## src/auth/session.py
+
+- **What:** Legacy clients skip the signature check.
+- **Why:** An unauthenticated request to /v1/legacy is accepted. Staging
+  runs on api.internal with password = hunter2hunter2.
+`;
+
+const EXPOSED = `
+
+## notes
+
+- Unauthenticated access to /v1/legacy is accepted.
+`;
+
+test('commit scan asks before committing a secret in GREYBEARD.md', () => {
+  fs.writeFileSync(path.join(projectDir, 'GREYBEARD.md'), LEAKY);
+  const out = commit();
+  assert.equal(out.permissionDecision, 'ask');
+  assert.match(out.additionalContext, /assigned secret/);
+  assert.match(out.permissionDecisionReason, /Committing it publishes it/);
+  // The value must not be repeated into the transcript.
+  assert.doesNotMatch(out.additionalContext, /hunter2/);
+  assert.doesNotMatch(out.permissionDecisionReason, /hunter2/);
+});
+
+test('commit scan names exposures without blocking', () => {
+  fs.writeFileSync(path.join(projectDir, 'GREYBEARD.md'), MEMORY + EXPOSED);
+  const out = commit();
+  assert.equal(out.permissionDecision, undefined);
+  assert.match(out.additionalContext, /how to break it/);
+});
+
+test('commit scan is silent on a clean file and on other commands', () => {
+  fs.writeFileSync(path.join(projectDir, 'GREYBEARD.md'), MEMORY);
+  assert.equal(commit(), null);
+  fs.writeFileSync(path.join(projectDir, 'GREYBEARD.md'), LEAKY);
+  assert.equal(commit('git status'), null);
+  assert.equal(commit('git commit --dry-run -m x'), null);
+});
+
+test('commit scan warns once per version of the file, not once per commit', () => {
+  fs.writeFileSync(path.join(projectDir, 'GREYBEARD.md'), LEAKY);
+  assert.notEqual(commit(), null, 'first commit warns');
+  assert.equal(commit(), null, 'same content, already said once');
+  fs.writeFileSync(path.join(projectDir, 'GREYBEARD.md'), LEAKY + '  - Another line.');
+  assert.notEqual(commit(), null, 'the file changed, look again');
+});
+
+test('commit scan says nothing when greybeard is off', () => {
+  fs.writeFileSync(path.join(projectDir, 'GREYBEARD.md'), LEAKY);
+  runtime.setMode('off', 'sess-quiet');
+  assert.equal(commit('git commit -m x', 'sess-quiet'), null);
 });
