@@ -171,6 +171,53 @@ session ends in a workaround someone will later want to remove. Commit it
 with the code. See [`examples/GREYBEARD.md`](examples/GREYBEARD.md) for a
 fuller example.
 
+## Working with a team
+
+`GREYBEARD.md` is committed, so the knowledge arrives with the clone. A new
+dev's first session already knows why the sleep is there.
+
+**Adopting it**
+
+- New project: `/greybeard-new`, then commit a near-empty `GREYBEARD.md` so
+  the file exists before anyone needs it.
+- Existing codebase: `/greybeard-onboard` for bearings, then
+  `/greybeard-audit`. The audit finds candidates, not reasons — it hands the
+  people who were there a list to answer. An entry written from a guess is
+  worse than no entry.
+
+**The loop**
+
+1. Someone finds out why something is the way it is — from `/greybeard-why`,
+   a postmortem, or their own memory.
+2. `/greybeard-remember` writes it down.
+3. The entry ships in the PR and gets reviewed like code.
+4. The next person to touch that file gets it injected by the `PreToolUse`
+   guard, before their edit, whether or not they ever read the file.
+
+Step 4 is the one that pays. It works for the dev who joined last month and
+was not in the incident channel.
+
+**Shared and not shared**
+
+| | Where | Scope |
+|---|---|---|
+| The entries | `GREYBEARD.md`, in the repo | The team |
+| The level | `~/.claude/greybeard-modes/` | One session, one machine |
+| The default level | `GREYBEARD_DEFAULT_MODE`, then `~/.claude/greybeard.json` | One machine |
+
+**Known limits**
+
+- No repo-level default level. A team cannot commit "this repo runs at
+  `ultra`"; each dev sets their own, or you set the environment variable in
+  whatever bootstraps their shell.
+- Above 12 000 characters the session-start injection truncates and points
+  at the file. The per-file guard is not truncated, so the warning at the
+  moment of the edit keeps working; you lose the ambient context, not the
+  net.
+- A `GREYBEARD.md` in a subdirectory shadows the root one for files beneath
+  it. Nearest file wins; they are not merged. Splitting a large file by
+  package is therefore not a way around the 12 000 characters.
+
 ## Files
 
 ```
