@@ -11,9 +11,6 @@ why the system looks the way it does, warns with concrete scenarios instead
 of vague worry, knows when *not* to change anything, and writes what it
 learns into the project's institutional memory, `GREYBEARD.md`.
 
-[ponytail](https://github.com/DietrichGebert/ponytail) makes your agent
-write less code. Greybeard makes it understand the code that is already
-there before it changes it.
 
 ## Install
 
