@@ -35,8 +35,50 @@ function getClaudeDir() {
   return process.env.CLAUDE_CONFIG_DIR || path.join(os.homedir(), '.claude');
 }
 
-function modePath() {
-  return path.join(getClaudeDir(), '.greybeard-mode');
+// The level is per session: two Claude Code windows must not share one flag,
+// or "/greybeard off" in one silently disarms the guard in the other. Hooks
+// pass the session_id from their payload. Without one the shared file is used,
+// which is what every session did before.
+const SHARED_MODE_FILE = '.greybeard-mode';
+const SESSION_MODE_DIR = 'greybeard-modes';
+
+// The id comes from a hook payload and ends up in a path; anything that is
+// not a plain id is treated as no id at all.
+function sessionKey(sessionId) {
+  const id = String(sessionId || '').trim();
+  return /^[A-Za-z0-9_-]{1,128}$/.test(id) ? id : null;
+}
+
+function modePath(sessionId) {
+  const key = sessionKey(sessionId);
+  if (!key) return path.join(getClaudeDir(), SHARED_MODE_FILE);
+  return path.join(getClaudeDir(), SESSION_MODE_DIR, key + '.mode');
+}
+
+// Session flags outlive their sessions: nothing tells a hook that a window
+// has closed. greybeard: swept by age at startup instead. A session left
+// idle longer than this loses its level and falls back to the default, which
+// is the harmless direction to fail in.
+const STALE_MODE_MS = 7 * 24 * 60 * 60 * 1000;
+
+function sweepStaleModes(now) {
+  const dir = path.join(getClaudeDir(), SESSION_MODE_DIR);
+  let names;
+  try {
+    names = fs.readdirSync(dir);
+  } catch (e) {
+    return; // no session flags yet
+  }
+  const cutoff = (now || Date.now()) - STALE_MODE_MS;
+  for (const name of names) {
+    if (!name.endsWith('.mode')) continue;
+    const file = path.join(dir, name);
+    try {
+      if (fs.statSync(file).mtimeMs < cutoff) fs.unlinkSync(file);
+    } catch (e) {
+      // raced with another session, or not ours to remove
+    }
+  }
 }
 
 function configPath() {
@@ -73,23 +115,24 @@ function writeDefaultMode(mode) {
   fs.writeFileSync(configPath(), JSON.stringify({ defaultMode: mode }, null, 2) + '\n');
 }
 
-function readMode() {
+function readMode(sessionId) {
   try {
-    const m = fs.readFileSync(modePath(), 'utf8').trim();
+    const m = fs.readFileSync(modePath(sessionId), 'utf8').trim();
     return isMode(m) ? m : null;
   } catch (e) {
     return null;
   }
 }
 
-function setMode(mode) {
-  ensureDir(getClaudeDir());
-  fs.writeFileSync(modePath(), mode + '\n');
+function setMode(mode, sessionId) {
+  const file = modePath(sessionId);
+  ensureDir(path.dirname(file));
+  fs.writeFileSync(file, mode + '\n');
 }
 
-function clearMode() {
+function clearMode(sessionId) {
   try {
-    fs.unlinkSync(modePath());
+    fs.unlinkSync(modePath(sessionId));
   } catch (e) {
     // already gone
   }
@@ -97,8 +140,8 @@ function clearMode() {
 
 // The mode in force right now: an explicit session switch (including "off")
 // wins, otherwise the configured default.
-function currentMode() {
-  return readMode() || getDefaultMode();
+function currentMode(sessionId) {
+  return readMode(sessionId) || getDefaultMode();
 }
 
 // Walk up from startDir looking for a file named `name`.
@@ -257,8 +300,10 @@ module.exports = {
   getClaudeDir,
   getDefaultMode,
   writeDefaultMode,
+  modePath,
   readMode,
   setMode,
+  sweepStaleModes,
   clearMode,
   currentMode,
   findUp,
