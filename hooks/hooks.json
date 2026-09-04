@@ -39,6 +39,17 @@
     ],
     "PreToolUse": [
       {
+        "matcher": "Bash|PowerShell",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/greybeard-commit-scan.js\"",
+            "timeout": 5,
+            "statusMessage": "Greybeard reading GREYBEARD.md before the commit..."
+          }
+        ]
+      },
+      {
         "matcher": "Edit|Write|MultiEdit|NotebookEdit|Bash|PowerShell",
         "hooks": [
           {
