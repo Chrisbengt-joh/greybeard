@@ -44,7 +44,9 @@ change them.
   with no warning and no error. Found 2026-09-04.
 - **If removed:** Silent gap on one platform only, which is the kind that
   survives a green CI run. `PreToolUse matcher covers the shell tools on
-  every platform` in `tests/hooks.test.js` fails if a tool drops out.
+  every platform` in `tests/hooks.test.js` fails if a tool drops out. That
+  test finds the guard's group by script name, not by position: there are
+  two `PreToolUse` groups now, and the commit scan is registered first.
 - **Since:** 2026-09-04
 
 ## hooks/greybeard-runtime.js — the mode flag
@@ -62,4 +64,22 @@ change them.
   back to the shared file rather than to a path of the payload's choosing.
   Stale flags are swept by age at startup (7 days) because nothing tells a
   hook that a window has closed.
+- **Since:** 2026-09-04
+
+## hooks/greybeard-commit-scan.js
+
+- **What:** Reads `GREYBEARD.md` before a `git commit` and reports secrets
+  and exposures. It reports once per version of the file, keyed by a sha256
+  in `~/.claude/greybeard-scan.json`, and only sets `permissionDecision:
+  ask` for secret-class hits.
+- **Why:** The file is committed, so a bad entry is published, and in a
+  public repo the history keeps it after any later deletion. Added
+  2026-09-04.
+- **If it warns on every commit instead:** People learn to ignore it, and an
+  ignored scanner is worse than none — it reads as assurance. The
+  once-per-version rule is what keeps it credible; do not remove it to
+  "catch more".
+- **Also:** It prints line numbers and pattern names, never the matched
+  value, so the transcript does not become a second copy of the leak.
+  Regexes catch the obvious shapes only. This is a net, not a guarantee.
 - **Since:** 2026-09-04
