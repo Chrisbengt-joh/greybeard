@@ -46,3 +46,20 @@ change them.
   survives a green CI run. `PreToolUse matcher covers the shell tools on
   every platform` in `tests/hooks.test.js` fails if a tool drops out.
 - **Since:** 2026-09-04
+
+## hooks/greybeard-runtime.js — the mode flag
+
+- **What:** The level lives in `~/.claude/greybeard-modes/<session_id>.mode`,
+  one file per session, not in a single shared flag.
+- **Why:** The shared `~/.claude/.greybeard-mode` was read by every window at
+  once. `/greybeard off` in one project turned the PreToolUse guard off in
+  every other open session — no message in those transcripts, so nobody saw
+  it happen. Changed 2026-09-04.
+- **If reverted to one file:** Silent cross-session disarming. The session
+  that loses its guard is never the one that typed the command.
+- **Also:** The session id comes from a hook payload and is used in a path,
+  so `sessionKey` rejects anything but `[A-Za-z0-9_-]`; a rejected id falls
+  back to the shared file rather than to a path of the payload's choosing.
+  Stale flags are swept by age at startup (7 days) because nothing tells a
+  hook that a window has closed.
+- **Since:** 2026-09-04
