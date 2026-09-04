@@ -39,7 +39,7 @@ function firstLine(text) {
 }
 
 readStdin((data) => {
-  const mode = currentMode();
+  const mode = currentMode(data.session_id);
   if (mode === 'off') return;
 
   const toolName = data.tool_name || '';
