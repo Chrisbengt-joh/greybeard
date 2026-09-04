@@ -23,7 +23,9 @@ function loadRules(mode) {
 }
 
 function loadMemory(cwd) {
-  const file = findMemoryFile([cwd, process.cwd()]);
+  // Only the session's own project. A process.cwd() fallback here reads the
+  // GREYBEARD.md of whatever directory the hook happened to be launched from.
+  const file = findMemoryFile([cwd]);
   if (!file) {
     return (
       'PROJECT MEMORY: no GREYBEARD.md found in this project. When you learn why ' +
