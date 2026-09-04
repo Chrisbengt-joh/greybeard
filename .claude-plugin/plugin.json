@@ -1,0 +1,14 @@
+{
+  "name": "greybeard",
+  "version": "0.1.0",
+  "description": "Greybeard mode. The agent that has seen it before: understands why the system looks the way it does, warns with concrete scenarios, knows when not to change anything, and keeps institutional memory in GREYBEARD.md.",
+  "author": {
+    "name": "Christoffer Johansson",
+    "url": "https://github.com/Chrisbengt-joh"
+  },
+  "homepage": "https://github.com/Chrisbengt-joh/greybeard",
+  "repository": "https://github.com/Chrisbengt-joh/greybeard",
+  "license": "MIT",
+  "keywords": ["claude-code", "plugin", "greybeard", "institutional-memory", "code-review", "risk"],
+  "hooks": "./hooks/hooks.json"
+}
