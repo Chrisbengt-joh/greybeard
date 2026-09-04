@@ -9,6 +9,5 @@
   "homepage": "https://github.com/Chrisbengt-joh/greybeard",
   "repository": "https://github.com/Chrisbengt-joh/greybeard",
   "license": "MIT",
-  "keywords": ["claude-code", "plugin", "greybeard", "institutional-memory", "code-review", "risk"],
-  "hooks": "./hooks/hooks.json"
+  "keywords": ["claude-code", "plugin", "greybeard", "institutional-memory", "code-review", "risk"]
 }
