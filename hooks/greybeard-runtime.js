@@ -199,7 +199,7 @@ function matchEntries(entries, filePath) {
 }
 
 // Entries whose heading appears anywhere in a free-text string, such as a
-// shell command. Used for Bash tool calls.
+// shell command. Used for Bash and PowerShell tool calls.
 function matchEntriesInText(entries, text) {
   const t = normalizePath(text);
   return entries.filter((e) => e.isPath && !/[*?]/.test(e.heading) && t.includes(normalizePath(e.heading)));
