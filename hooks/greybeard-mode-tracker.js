@@ -35,6 +35,8 @@ readStdin((data) => {
   const prompt = String(data.prompt || '').trim().toLowerCase();
   if (!prompt) return;
 
+  const sessionId = data.session_id;
+
   const cmd = COMMAND.exec(prompt);
   if (cmd) {
     const args = (cmd[1] || '').trim().split(/\s+/).filter(Boolean);
@@ -52,19 +54,19 @@ readStdin((data) => {
     }
 
     if (arg === 'off') {
-      setMode('off');
+      setMode('off', sessionId);
       writeHookOutput(EVENT, 'GREYBEARD MODE OFF — normal behaviour until "/greybeard" or "greybeard on".');
       return;
     }
 
     if (isLevel(arg)) {
-      setMode(arg);
+      setMode(arg, sessionId);
       writeHookOutput(EVENT, 'GREYBEARD MODE CHANGED — level: ' + arg);
       return;
     }
 
     if (arg === '') {
-      const mode = currentMode();
+      const mode = currentMode(sessionId);
       if (mode === 'off') {
         writeHookOutput(EVENT, 'GREYBEARD MODE OFF. Switch on with /greybeard lite|full|ultra.');
       } else {
@@ -78,7 +80,7 @@ readStdin((data) => {
   }
 
   if (isDeactivation(prompt)) {
-    setMode('off');
+    setMode('off', sessionId);
     writeHookOutput(EVENT, 'GREYBEARD MODE OFF');
     return;
   }
@@ -86,7 +88,7 @@ readStdin((data) => {
   if (isActivation(prompt)) {
     const def = getDefaultMode();
     const mode = def === 'off' ? 'full' : def;
-    setMode(mode);
+    setMode(mode, sessionId);
     writeHookOutput(EVENT, 'GREYBEARD MODE ACTIVE — level: ' + mode);
   }
 });
