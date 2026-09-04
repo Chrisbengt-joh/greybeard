@@ -258,6 +258,13 @@ test('guard catches paths inside Bash commands', () => {
   assert.match(out.additionalContext, /src\/payments\/client\.py/);
 });
 
+test('guard catches paths inside PowerShell commands', () => {
+  fs.writeFileSync(path.join(projectDir, 'GREYBEARD.md'), MEMORY);
+  runtime.setMode('full');
+  const out = guard('PowerShell', { command: 'Remove-Item src/payments/client.py' });
+  assert.match(out.additionalContext, /src\/payments\/client\.py/);
+});
+
 test('guard finds GREYBEARD.md above the edited file, not only cwd', () => {
   fs.writeFileSync(path.join(projectDir, 'GREYBEARD.md'), MEMORY);
   runtime.setMode('full');
@@ -300,5 +307,15 @@ test('every skill has frontmatter with a matching name', () => {
     const m = /^---\r?\n[\s\S]*?^name:\s*(\S+)\s*$[\s\S]*?^---/m.exec(text);
     assert.ok(m, dir + ' has frontmatter');
     assert.equal(m[1], dir, dir + ' name matches directory');
+  }
+});
+
+test('PreToolUse matcher covers the shell tools on every platform', () => {
+  const cfg = JSON.parse(fs.readFileSync(path.join(HOOKS, 'hooks.json'), 'utf8'));
+  const matcher = cfg.hooks.PreToolUse[0].matcher;
+  // Windows sessions get a PowerShell tool instead of Bash; if it is not in
+  // the matcher the guard never runs for shell commands there.
+  for (const tool of ['Edit', 'Write', 'MultiEdit', 'NotebookEdit', 'Bash', 'PowerShell']) {
+    assert.ok(new RegExp('^(?:' + matcher + ')$').test(tool), 'matcher misses ' + tool);
   }
 });
