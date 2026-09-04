@@ -11,6 +11,7 @@ const {
   getDefaultMode,
   readStdin,
   setMode,
+  sweepStaleModes,
   writeHookOutput,
 } = require('./greybeard-runtime');
 const { getInstructions } = require('./greybeard-instructions');
@@ -19,11 +20,13 @@ readStdin((data) => {
   const event = data.hook_event_name === 'SubagentStart' ? 'SubagentStart' : 'SessionStart';
   const source = data.source || 'startup';
   const cwd = data.cwd || process.cwd();
+  const sessionId = data.session_id;
 
-  const mode = source === 'startup' ? getDefaultMode() : currentMode();
+  const mode = source === 'startup' ? getDefaultMode() : currentMode(sessionId);
 
   try {
-    setMode(mode);
+    if (source === 'startup') sweepStaleModes();
+    setMode(mode, sessionId);
   } catch (e) {
     // The flag is best effort; the rules still go out.
   }
