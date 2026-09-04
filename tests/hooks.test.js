@@ -38,9 +38,12 @@ function runHook(script, input, env) {
   return out ? JSON.parse(out).hookSpecificOutput : null;
 }
 
-function readFlag() {
+function readFlag(sessionId) {
+  const file = sessionId
+    ? path.join(configDir, 'greybeard-modes', sessionId + '.mode')
+    : path.join(configDir, '.greybeard-mode');
   try {
-    return fs.readFileSync(path.join(configDir, '.greybeard-mode'), 'utf8').trim();
+    return fs.readFileSync(file, 'utf8').trim();
   } catch (e) {
     return null;
   }
@@ -318,4 +321,51 @@ test('PreToolUse matcher covers the shell tools on every platform', () => {
   for (const tool of ['Edit', 'Write', 'MultiEdit', 'NotebookEdit', 'Bash', 'PowerShell']) {
     assert.ok(new RegExp('^(?:' + matcher + ')$').test(tool), 'matcher misses ' + tool);
   }
+});
+
+// ---- session isolation ---------------------------------------------------
+
+test('two sessions keep their own level', () => {
+  runHook('greybeard-mode-tracker.js', { prompt: '/greybeard off', session_id: 'sess-a' });
+  runHook('greybeard-mode-tracker.js', { prompt: '/greybeard ultra', session_id: 'sess-b' });
+  assert.equal(readFlag('sess-a'), 'off');
+  assert.equal(readFlag('sess-b'), 'ultra');
+  // Turning it off in one window must not disarm the guard in the other.
+  assert.equal(runtime.currentMode('sess-a'), 'off');
+  assert.equal(runtime.currentMode('sess-b'), 'ultra');
+});
+
+test('the guard reads the level of the session it was called in', () => {
+  fs.writeFileSync(path.join(projectDir, 'GREYBEARD.md'), MEMORY);
+  runtime.setMode('off', 'sess-off');
+  runtime.setMode('full', 'sess-on');
+  const input = { tool_name: 'Edit', tool_input: { file_path: path.join(projectDir, 'src/payments/client.py') }, cwd: projectDir };
+  assert.equal(runHook('greybeard-guard.js', Object.assign({ session_id: 'sess-off' }, input)), null);
+  const out = runHook('greybeard-guard.js', Object.assign({ session_id: 'sess-on' }, input));
+  assert.match(out.additionalContext, /has history/);
+});
+
+test('a session keeps its level across resume and compact', () => {
+  runHook('greybeard-mode-tracker.js', { prompt: '/greybeard lite', session_id: 'sess-c' });
+  const out = runHook('greybeard-activate.js', { source: 'resume', cwd: projectDir, session_id: 'sess-c' });
+  assert.match(out.additionalContext, /level: lite/);
+  assert.equal(readFlag('sess-c'), 'lite');
+});
+
+test('a session id that is not a plain id falls back to the shared flag', () => {
+  const shared = path.join(configDir, '.greybeard-mode');
+  for (const bad of ['../evil', 'a/b', '', null]) {
+    assert.equal(runtime.modePath(bad), shared, 'unsafe id must not reach the path: ' + bad);
+  }
+});
+
+test('sweepStaleModes removes flags older than the cutoff and keeps the rest', () => {
+  runtime.setMode('full', 'old-session');
+  runtime.setMode('full', 'live-session');
+  const old = path.join(configDir, 'greybeard-modes', 'old-session.mode');
+  const past = Date.now() - 8 * 24 * 60 * 60 * 1000;
+  fs.utimesSync(old, past / 1000, past / 1000);
+  runtime.sweepStaleModes();
+  assert.equal(readFlag('old-session'), null);
+  assert.equal(readFlag('live-session'), 'full');
 });
