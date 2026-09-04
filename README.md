@@ -27,8 +27,9 @@ Requires Node.js 18 or later on your PATH; there are no dependencies.
 Greybeard is three hooks and fourteen skills.
 
 **At session start** the ruleset is injected as context, together with the
-project's `GREYBEARD.md` if there is one. The agent now runs on five
-reflexes:
+project's `GREYBEARD.md` if there is one. The same hook runs at the start
+of every subagent, so delegated work runs on the same reflexes. The agent
+now runs on five reflexes:
 
 1. **Understand why before you change.** Odd code gets `git blame`, the
    commit message, the tests, and `GREYBEARD.md` before it gets edited. A
@@ -171,7 +172,7 @@ fuller example.
 .claude-plugin/       plugin and marketplace manifests
 hooks/hooks.json      SessionStart, SubagentStart, UserPromptSubmit, PreToolUse
 hooks/*.js            the hooks; no dependencies, Node 18+
-skills/*/SKILL.md     the ruleset and the thirteen commands
+skills/*/SKILL.md     the ruleset and the fourteen commands
 examples/GREYBEARD.md a memory file to copy from
 tests/                node --test, run with npm test
 ```
