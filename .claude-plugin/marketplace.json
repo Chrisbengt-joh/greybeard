@@ -1,0 +1,17 @@
+{
+  "$schema": "https://anthropic.com/claude-code/marketplace.schema.json",
+  "name": "greybeard",
+  "description": "Greybeard mode for Claude Code. The system is the way it is for reasons. Find them before you change it.",
+  "owner": {
+    "name": "Christoffer Johansson",
+    "url": "https://github.com/Chrisbengt-joh"
+  },
+  "plugins": [
+    {
+      "name": "greybeard",
+      "description": "Understands why before changing, warns with concrete scenarios, knows when not to change anything, remembers in GREYBEARD.md.",
+      "source": "./",
+      "category": "productivity"
+    }
+  ]
+}
