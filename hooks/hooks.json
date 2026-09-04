@@ -1,0 +1,54 @@
+{
+  "hooks": {
+    "SessionStart": [
+      {
+        "matcher": "startup|resume|clear|compact",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/greybeard-activate.js\"",
+            "timeout": 5,
+            "statusMessage": "Waking the greybeard..."
+          }
+        ]
+      }
+    ],
+    "SubagentStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/greybeard-activate.js\"",
+            "timeout": 5,
+            "statusMessage": "Waking the greybeard..."
+          }
+        ]
+      }
+    ],
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/greybeard-mode-tracker.js\"",
+            "timeout": 5,
+            "statusMessage": "Checking greybeard mode..."
+          }
+        ]
+      }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "Edit|Write|MultiEdit|NotebookEdit|Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \"${CLAUDE_PLUGIN_ROOT}/hooks/greybeard-guard.js\"",
+            "timeout": 5,
+            "statusMessage": "Greybeard checking GREYBEARD.md..."
+          }
+        ]
+      }
+    ]
+  }
+}
