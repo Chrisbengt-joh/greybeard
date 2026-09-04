@@ -29,6 +29,8 @@ function runHook(script, input, env) {
   const res = spawnSync(process.execPath, [path.join(HOOKS, script)], {
     input: JSON.stringify(input || {}),
     encoding: 'utf8',
+    // Never inherit the repo's own cwd: it has a GREYBEARD.md of its own.
+    cwd: projectDir,
     env: Object.assign({}, process.env, { CLAUDE_CONFIG_DIR: configDir, GREYBEARD_DEFAULT_MODE: '' }, env || {}),
   });
   assert.equal(res.status, 0, 'hook exited non-zero: ' + res.stderr);
