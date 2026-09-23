@@ -13,7 +13,7 @@ change them.
   the manifest without the key, and its SessionStart hook fired. All six
   hook-carrying plugins in `anthropics/claude-plugins-official` omit the key
   the same way.
-- **If the convention changes:** All four hooks go silent. There is no
+- **If the convention changes:** All five hooks go silent. There is no
   error and no warning — greybeard mode simply stops activating, and the
   only symptom is the agent behaving normally. The `hooks.json references
   scripts that exist` test reads `hooks/hooks.json` by that exact path, so
@@ -46,8 +46,21 @@ change them.
   survives a green CI run. `PreToolUse matcher covers the shell tools on
   every platform` in `tests/hooks.test.js` fails if a tool drops out. That
   test finds the guard's group by script name, not by position: there are
-  two `PreToolUse` groups now, and the commit scan is registered first.
+  three `PreToolUse` groups now: the commit scan first, the fence last.
 - **Since:** 2026-09-04
+
+## hooks/greybeard-fence-rules.js — PowerShell
+
+- **What:** The fence is registered for `PowerShell`, but every shell rule is
+  written for sh syntax. PowerShell commands pass unclassified.
+- **Why:** Known hole, not an oversight. Rules for PowerShell need their own
+  syntax (`Remove-Item`, `Set-Content`, `iex`) and their own tests; a
+  half-done set would read as coverage. Documented in `SECURITY-NET.md`
+  under Limits.
+- **If forgotten:** On Windows, a destructive PowerShell command gets no
+  fence at all, and the green test run says nothing about it. Next thing to
+  do.
+- **Since:** 2026-09-23
 
 ## hooks/greybeard-runtime.js — the mode flag
 
