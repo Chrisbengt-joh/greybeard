@@ -24,7 +24,7 @@ Requires Node.js 18 or later on your PATH; there are no dependencies.
 
 ## What it does
 
-Greybeard is four hooks and fourteen skills.
+Greybeard is five hooks and twenty-five skills.
 
 **At session start** the ruleset is injected as context, together with the
 project's `GREYBEARD.md` if there is one. The same hook runs at the start
@@ -54,6 +54,13 @@ says what should not be committed: secrets, internal hostnames, or an entry
 that describes how to break something rather than what breaks. It speaks
 once per version of the file, not once per commit, and only asks for
 confirmation when what it found looks like a credential.
+
+**Before a command that cannot be taken back** a third `PreToolUse` hook,
+the fence, denies or asks: force pushes, history rewrites, `DROP TABLE`,
+`terraform destroy`, mail leaving the machine, and edits to the hooks
+themselves. Mail goes through `greybeard-approve` instead, which needs a
+code only you can see. It ignores greybeard mode, and PowerShell commands
+pass it unclassified for now. See [`SECURITY-NET.md`](SECURITY-NET.md).
 
 **On every prompt** a `UserPromptSubmit` hook tracks `/greybeard` level
 switches so the hooks and the model agree on the level.
@@ -129,6 +136,17 @@ defines the same name, `/greybeard:greybeard-<name>`.
 | "Remember this." | `/greybeard-remember <lesson>` writes a why into `GREYBEARD.md`. |
 | Adopting greybeard in an old codebase | `/greybeard-audit [path]` finds undocumented fences: hacks, sleeps, retries, magic numbers, swallowed errors, with `git blame` on each. |
 | New to the codebase | `/greybeard-onboard` explains how the system got here: how to run and ship it, the turning points, the fences, who knows what. |
+| An idea, before any code | `/greybeard-grill <idea>` asks the questions people skip until the idea holds or breaks. No code; ends in a written spec with testable acceptance criteria and explicit non-goals. |
+| Turning a spec into work | `/greybeard-ticket <what>` writes a ticket a stranger can implement: one reversible change, observable acceptance criteria, rollback, and the branch and commit convention. Splits tickets that are too big. |
+| "I think it's finished" | `/greybeard-done [ticket]` runs eleven gates, from acceptance criteria checked literally to a test proven to fail without the change. Evidence instead of a claim. |
+| "Where are we?" | `/greybeard-bearing [ticket]` compares where the work is against the goal, spec and acceptance criteria with ten fixed questions. For drift, loops, and the same error twice. |
+| Session ending, context filling | `/greybeard-handover` puts each fact where it belongs before compaction, and writes a handover note that includes the dead ends. |
+| Before a decision you cannot undo | `/greybeard-dual-pass <decision>` builds the strongest case for, attacks it with concrete scenarios, then gives a verdict, a confidence, and the fact that would change it. |
+| "What did we decide?" | `/greybeard-transcript` indexes the session as a tree with a verbatim grep anchor on every leaf, including what was rejected and why. |
+| "Our convention is…" | `/greybeard-kb [what]` keeps the project's own knowledge base in `.greybeard/kb/`: short single-claim notes with evidence, status and a review date. |
+| Anything outside the working tree | `/greybeard-env <what, where>` establishes blast radius before the command runs and keeps an environment ledger in `.greybeard/environments.md`. |
+| Several agents on one repo | `/greybeard-relay` sets frozen contracts, one owner per file, and a status board in `.greybeard/relay/`. Also decides whether to parallelise at all. |
+| Interface work | `/greybeard-ui` holds house preferences: the five states every view needs, accessibility, reusing the design system. The example specialist skill; copy its shape. |
 | Lost | `/greybeard-help` |
 
 ## GREYBEARD.md
@@ -239,9 +257,11 @@ was not in the incident channel.
 
 ```
 .claude-plugin/       plugin and marketplace manifests
-hooks/hooks.json      SessionStart, SubagentStart, UserPromptSubmit, PreToolUse x2
+hooks/hooks.json      SessionStart, SubagentStart, UserPromptSubmit, PreToolUse x3
 hooks/*.js            the hooks; no dependencies, Node 18+
-skills/*/SKILL.md     the ruleset and the fourteen commands
+tools/                greybeard-approve, the gate the fence points at
+skills/*/SKILL.md     the ruleset and the twenty-five commands
+SECURITY-NET.md       what the fence and the gate stop, and what they do not
 examples/GREYBEARD.md a memory file to copy from
 tests/                node --test, run with npm test
 ```

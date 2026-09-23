@@ -16,6 +16,9 @@
   "bugs": {
     "url": "https://github.com/Chrisbengt-joh/greybeard/issues"
   },
+  "bin": {
+    "greybeard-approve": "./tools/greybeard-approve.js"
+  },
   "engines": {
     "node": ">=18"
   },
