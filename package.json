@@ -1,6 +1,6 @@
 {
   "name": "greybeard",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "Greybeard mode for Claude Code. The system is the way it is for reasons. Find them before you change it.",
   "private": true,
   "license": "MIT",
