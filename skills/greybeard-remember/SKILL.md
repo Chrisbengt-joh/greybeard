@@ -22,6 +22,14 @@ This file is where it goes so it survives the greybeard.
 loaded at the start of every session and shown again right before a file
 with an entry is edited, so entries must be short and specific.
 
+The file is personal: one person's notes for their own agent, not a shared
+team document. Shared notes from several people drift into a file nobody owns
+and nobody trusts. When you create it in a git repository, add `GREYBEARD.md`
+to `.git/info/exclude` in the same step. That file is local and is not
+committed itself, so the repo's `.gitignore` and everyone else's clone stay
+untouched. Never commit `GREYBEARD.md`; a hook asks before a commit that
+would include it.
+
 ## Format
 
 One `##` section per file, directory, or decision. Sections whose heading is
@@ -74,9 +82,10 @@ Commit hashes and issue numbers when known.
 
 ## What does not go in
 
-`GREYBEARD.md` is committed. Everyone who can read the repo can read it, and
-in a public repo that is everyone, permanently: deleting an entry later does
-not remove it from the history, the clones, or the forks.
+`GREYBEARD.md` stays out of git, but it is not private: it is loaded into
+every session, so everything in it ends up in transcripts and in whatever the
+agent is sent. And a file that is excluded today can be committed by mistake
+tomorrow, where deleting an entry later does not remove it from the history.
 
 - **No secrets.** No credentials, keys, tokens, connection strings, or URLs
   with a password in them. Not even expired ones.

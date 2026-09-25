@@ -81,18 +81,23 @@ change them.
 
 ## hooks/greybeard-commit-scan.js
 
-- **What:** Reads `GREYBEARD.md` before a `git commit` and reports secrets
-  and exposures. It reports once per version of the file, keyed by a sha256
-  in `~/.claude/greybeard-scan.json`, and only sets `permissionDecision:
-  ask` for secret-class hits.
-- **Why:** The file is committed, so a bad entry is published, and in a
-  public repo the history keeps it after any later deletion. Added
-  2026-09-04.
-- **If it warns on every commit instead:** People learn to ignore it, and an
-  ignored scanner is worse than none — it reads as assurance. The
-  once-per-version rule is what keeps it credible; do not remove it to
-  "catch more".
-- **Also:** It prints line numbers and pattern names, never the matched
-  value, so the transcript does not become a second copy of the leak.
-  Regexes catch the obvious shapes only. This is a net, not a guarantee.
-- **Since:** 2026-09-04
+- **What:** Before a `git commit`, asks (`permissionDecision: ask`) if a
+  `GREYBEARD.md` is about to go in: staged, named in a chained `git add`, or
+  tracked and changed while the command has `-a`/`--all` or a `git add`.
+  Silent otherwise, including outside a git repo.
+- **Why:** Since 2026-09-25 `GREYBEARD.md` is personal and kept out of git via
+  `.git/info/exclude`. Shared notes from several people drifted into a file
+  nobody owned. The skills write the exclude; this is the net when it is
+  missing, or when the file was tracked from before.
+- **Was:** 2026-09-04 to 2026-09-25 it scanned the file's content for secrets
+  and exposures, once per version, because the file was committed and a
+  public repo keeps every entry. That reason is gone with the commit; the
+  "no secrets" rule stays in `greybeard-remember`, because the file is still
+  loaded into every transcript.
+- **Ask, not deny:** This repo keeps its own `GREYBEARD.md` committed on
+  purpose, as contributor docs for the plugin. Committing a change to it here
+  asks once per commit; answer yes. A `deny` would make that impossible.
+- **If the ask fires on commits that do not include the file:** People learn
+  to answer yes without reading, and the net stops working. That is why it
+  checks the index and does not match on the command text alone.
+- **Since:** 2026-09-04, rewritten 2026-09-25

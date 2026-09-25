@@ -45,6 +45,7 @@ run it, a way to test it, and an empty GREYBEARD.md.
    environment, how a new developer gets them.
 9. **The GREYBEARD.md.** Created empty on day one with the decisions above
    as its first entries. The project's memory starts before its first bug.
+   It is personal: add it to `.git/info/exclude`, never commit it.
 
 ## Steps
 
@@ -54,7 +55,8 @@ run it, a way to test it, and an empty GREYBEARD.md.
    reason either way.
 3. Create the minimum: README with the one-line description and the run
    command, the run command itself, a test command that runs one trivial
-   test, GREYBEARD.md with the decisions. Nothing else unless asked.
+   test, GREYBEARD.md with the decisions (and `GREYBEARD.md` in
+   `.git/info/exclude`). Nothing else unless asked.
 
 ## Output
 
@@ -66,7 +68,7 @@ Deploy:        <how>          Rollback: <how>
 Data:          <where>        Restore:  <how, tested when>
 Stack:         <boring choices, and the one deliberate new thing if any>
 Out of scope:  <list>
-Recorded in:   GREYBEARD.md
+Recorded in:   GREYBEARD.md (personal, in .git/info/exclude)
 Created:       <the files, and nothing else>
 ```
 

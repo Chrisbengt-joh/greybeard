@@ -49,11 +49,11 @@ then, before the change is made. That is the greybeard saying "don't touch
 it" at the exact moment it matters. In `ultra` mode the change also needs
 your explicit go-ahead.
 
-**Before a commit** a second `PreToolUse` hook reads `GREYBEARD.md` and
-says what should not be committed: secrets, internal hostnames, or an entry
-that describes how to break something rather than what breaks. It speaks
-once per version of the file, not once per commit, and only asks for
-confirmation when what it found looks like a credential.
+**Before a commit** a second `PreToolUse` hook checks whether `GREYBEARD.md`
+is about to go in: staged, added on the same command line, or tracked and
+picked up by `commit -a`. If it is, it asks for confirmation and says how to
+unstage it and exclude it. `GREYBEARD.md` is personal and stays out of git;
+the hook is the net for when the exclude is missing.
 
 **Before a command that cannot be taken back** a third `PreToolUse` hook,
 the fence, denies or asks: force pushes, history rewrites, `DROP TABLE`,
@@ -189,32 +189,39 @@ Rules of the file:
 - Short. It is loaded every session. Above 12 000 characters the agent is
   told to read the file instead.
 
-**What does not go in it.** The file is committed, and in a public repo a
-commit is permanent: deleting an entry later leaves it in the history, the
-clones and the forks. No credentials or keys. No internal hostnames, private
+**It is personal.** `GREYBEARD.md` is one person's notes for their own agent,
+not a team document: shared notes from several people drift into a file nobody
+owns and nobody trusts. Greybeard adds it to `.git/info/exclude` when it
+creates the file, which keeps it out of git without touching the repo's
+`.gitignore`. If the file is already tracked from before, untrack it once:
+`git rm --cached GREYBEARD.md` and add it to `.git/info/exclude`.
+
+**What does not go in it.** It is loaded into every session, so everything in
+it ends up in transcripts, and a file excluded today can be committed by
+mistake tomorrow. No credentials or keys. No internal hostnames, private
 addresses, or customer names — reference a ticket by id and let the reader
 with access go and look. Write *what breaks*, not *how to break it*: "payments
 drop silently under load" is an entry, repro steps for an auth bypass are not.
 If the honest entry would describe an unfixed hole, the entry is not the risk,
-the code is — write a stub pointing at a private ticket and fix the code. The
-commit hook checks for the obvious cases; it does not replace reading the
-entry you just wrote.
+the code is — write a stub pointing at a private ticket and fix the code.
 
 Greybeard writes to it when it learns something (`full` and `ultra`), when
 you ask (`/greybeard-remember`), after a postmortem, and when a debug
-session ends in a workaround someone will later want to remove. Commit it
-with the code. See [`examples/GREYBEARD.md`](examples/GREYBEARD.md) for a
+session ends in a workaround someone will later want to remove. See [`examples/GREYBEARD.md`](examples/GREYBEARD.md) for a
 fuller example.
 
 ## Working with a team
 
-`GREYBEARD.md` is committed, so the knowledge arrives with the clone. A new
-dev's first session already knows why the sleep is there.
+`GREYBEARD.md` is personal, so each developer keeps their own. What the
+team needs to know goes where the team already looks: a code comment next to
+the sleep, the commit message, the ticket, or the knowledge base in
+`.greybeard/kb/`. `GREYBEARD.md` is where *your* agent is reminded of it
+before *your* edit.
 
 **Adopting it**
 
-- New project: `/greybeard-new`, then commit a near-empty `GREYBEARD.md` so
-  the file exists before anyone needs it.
+- New project: `/greybeard-new`. It creates `GREYBEARD.md` and adds it to
+  `.git/info/exclude`.
 - Existing codebase: `/greybeard-onboard` for bearings, then
   `/greybeard-audit`. The audit finds candidates, not reasons — it hands the
   people who were there a list to answer. An entry written from a guess is
@@ -225,18 +232,19 @@ dev's first session already knows why the sleep is there.
 1. Someone finds out why something is the way it is — from `/greybeard-why`,
    a postmortem, or their own memory.
 2. `/greybeard-remember` writes it down.
-3. The entry ships in the PR and gets reviewed like code.
-4. The next person to touch that file gets it injected by the `PreToolUse`
-   guard, before their edit, whether or not they ever read the file.
+3. The reason that others need also goes in a code comment or the commit
+   message, where it is reviewed like code.
+4. The next time you touch that file, your agent gets the entry injected by
+   the `PreToolUse` guard, before the edit, whether or not you remember it.
 
-Step 4 is the one that pays. It works for the dev who joined last month and
-was not in the incident channel.
+Step 4 is the one that pays: the reason you learned three months ago is
+there at the moment you are about to undo it.
 
 **Shared and not shared**
 
 | | Where | Scope |
 |---|---|---|
-| The entries | `GREYBEARD.md`, in the repo | The team |
+| The entries | `GREYBEARD.md`, in the repo root, in `.git/info/exclude` | One person |
 | The level | `~/.claude/greybeard-modes/` | One session, one machine |
 | The default level | `GREYBEARD_DEFAULT_MODE`, then `~/.claude/greybeard.json` | One machine |
 

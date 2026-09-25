@@ -382,6 +382,28 @@ test('sweepStaleModes removes flags older than the cutoff and keeps the rest', (
 });
 
 // ---- commit scan ---------------------------------------------------------
+// GREYBEARD.md is personal. The hook asks when it is about to be committed and
+// is silent otherwise. Each test runs against a real git repo in projectDir.
+
+function gitIn(...args) {
+  const res = spawnSync('git', args, { cwd: projectDir, encoding: 'utf8' });
+  assert.equal(res.status, 0, 'git ' + args.join(' ') + ': ' + res.stderr);
+}
+
+function repo() {
+  gitIn('init', '-q');
+  gitIn('config', 'user.email', 'test@example.invalid');
+  gitIn('config', 'user.name', 'test');
+  fs.writeFileSync(path.join(projectDir, 'app.py'), 'print(1)\n');
+}
+
+function trackedMemory() {
+  repo();
+  fs.writeFileSync(path.join(projectDir, 'GREYBEARD.md'), MEMORY);
+  gitIn('add', '.');
+  gitIn('commit', '-q', '-m', 'before the rule');
+  fs.appendFileSync(path.join(projectDir, 'GREYBEARD.md'), '\n- One more line.\n');
+}
 
 function commit(command, sessionId) {
   return runHook('greybeard-commit-scan.js', {
@@ -392,58 +414,52 @@ function commit(command, sessionId) {
   });
 }
 
-const LEAKY = MEMORY + `
-
-## src/auth/session.py
-
-- **What:** Legacy clients skip the signature check.
-- **Why:** An unauthenticated request to /v1/legacy is accepted. Staging
-  runs on api.internal with password = hunter2hunter2.
-`;
-
-const EXPOSED = `
-
-## notes
-
-- Unauthenticated access to /v1/legacy is accepted.
-`;
-
-test('commit scan asks before committing a secret in GREYBEARD.md', () => {
-  fs.writeFileSync(path.join(projectDir, 'GREYBEARD.md'), LEAKY);
+test('commit scan asks when GREYBEARD.md is staged', () => {
+  repo();
+  fs.writeFileSync(path.join(projectDir, 'GREYBEARD.md'), MEMORY);
+  gitIn('add', 'GREYBEARD.md');
   const out = commit();
   assert.equal(out.permissionDecision, 'ask');
-  assert.match(out.additionalContext, /assigned secret/);
-  assert.match(out.permissionDecisionReason, /Committing it publishes it/);
-  // The value must not be repeated into the transcript.
-  assert.doesNotMatch(out.additionalContext, /hunter2/);
-  assert.doesNotMatch(out.permissionDecisionReason, /hunter2/);
+  assert.match(out.permissionDecisionReason, /personal/);
+  assert.match(out.additionalContext, /\.git\/info\/exclude/);
 });
 
-test('commit scan names exposures without blocking', () => {
-  fs.writeFileSync(path.join(projectDir, 'GREYBEARD.md'), MEMORY + EXPOSED);
-  const out = commit();
-  assert.equal(out.permissionDecision, undefined);
-  assert.match(out.additionalContext, /how to break it/);
-});
-
-test('commit scan is silent on a clean file and on other commands', () => {
+test('commit scan asks when the same command line adds GREYBEARD.md', () => {
+  repo();
   fs.writeFileSync(path.join(projectDir, 'GREYBEARD.md'), MEMORY);
+  assert.equal(commit('git add GREYBEARD.md && git commit -m x').permissionDecision, 'ask');
+});
+
+test('commit scan asks on commit -a when GREYBEARD.md is tracked and changed', () => {
+  trackedMemory();
+  assert.equal(commit('git commit -am x').permissionDecision, 'ask');
+  assert.equal(commit('git add . && git commit -m x').permissionDecision, 'ask');
+  // Plain commit: the change is not staged, so it is not going in.
+  assert.equal(commit('git commit -m x'), null);
+});
+
+test('commit scan is silent when GREYBEARD.md is excluded and other files are staged', () => {
+  repo();
+  fs.writeFileSync(path.join(projectDir, 'GREYBEARD.md'), MEMORY);
+  fs.appendFileSync(path.join(projectDir, '.git', 'info', 'exclude'), 'GREYBEARD.md\n');
+  gitIn('add', '.');
   assert.equal(commit(), null);
-  fs.writeFileSync(path.join(projectDir, 'GREYBEARD.md'), LEAKY);
+  assert.equal(commit('git add -A && git commit -am x'), null);
+});
+
+test('commit scan is silent on other commands, dry runs, and outside a repo', () => {
+  fs.writeFileSync(path.join(projectDir, 'GREYBEARD.md'), MEMORY);
+  assert.equal(commit(), null, 'no git repo here');
+  repo();
+  gitIn('add', 'GREYBEARD.md');
   assert.equal(commit('git status'), null);
   assert.equal(commit('git commit --dry-run -m x'), null);
 });
 
-test('commit scan warns once per version of the file, not once per commit', () => {
-  fs.writeFileSync(path.join(projectDir, 'GREYBEARD.md'), LEAKY);
-  assert.notEqual(commit(), null, 'first commit warns');
-  assert.equal(commit(), null, 'same content, already said once');
-  fs.writeFileSync(path.join(projectDir, 'GREYBEARD.md'), LEAKY + '  - Another line.');
-  assert.notEqual(commit(), null, 'the file changed, look again');
-});
-
 test('commit scan says nothing when greybeard is off', () => {
-  fs.writeFileSync(path.join(projectDir, 'GREYBEARD.md'), LEAKY);
+  repo();
+  fs.writeFileSync(path.join(projectDir, 'GREYBEARD.md'), MEMORY);
+  gitIn('add', 'GREYBEARD.md');
   runtime.setMode('off', 'sess-quiet');
   assert.equal(commit('git commit -m x', 'sess-quiet'), null);
 });
