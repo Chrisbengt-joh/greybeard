@@ -1,4 +1,12 @@
-# greybeard
+<p align="center">
+  <img src="assets/logo.png" width="220" alt="greybeard, the developer who has seen it before">
+</p>
+
+<h1 align="center">greybeard</h1>
+
+<p align="center">
+  <em>The system is the way it is for reasons. Find them before you change it.</em>
+</p>
 
 > "Let's rewrite the entire system in Rust."
 > "We tried that."
