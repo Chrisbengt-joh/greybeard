@@ -27,8 +27,8 @@ team document. Shared notes from several people drift into a file nobody owns
 and nobody trusts. When you create it in a git repository, add `GREYBEARD.md`
 to `.git/info/exclude` in the same step. That file is local and is not
 committed itself, so the repo's `.gitignore` and everyone else's clone stay
-untouched. Never commit `GREYBEARD.md`; a hook asks before a commit that
-would include it.
+untouched. Never commit `GREYBEARD.md`; a hook blocks a commit that would
+include it.
 
 ## Format
 

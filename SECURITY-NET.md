@@ -70,6 +70,10 @@ itself covered by `self.edit-fence`, so widening it is a human's commit. Broken
 JSON falls back to the defaults and says so in the reason, rather than failing
 quietly in the permissive direction.
 
+`"commitMemory": true` is read by the commit hook, not the fence: it lets this
+repo commit its `GREYBEARD.md`. Anything but literal `true`, or broken JSON,
+keeps the commit blocked.
+
 ## The gate
 
 The fence denies `sendmail`, `msmtp`, `mail`, `mutt`, `swaks`, `osascript …

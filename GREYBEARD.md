@@ -81,10 +81,11 @@ change them.
 
 ## hooks/greybeard-commit-scan.js
 
-- **What:** Before a `git commit`, asks (`permissionDecision: ask`) if a
+- **What:** Before a `git commit`, denies (`permissionDecision: deny`) if a
   `GREYBEARD.md` is about to go in: staged, named in a chained `git add`, or
   tracked and changed while the command has `-a`/`--all` or a `git add`.
-  Silent otherwise, including outside a git repo.
+  Silent otherwise, including outside a git repo, and in a repo whose
+  `greybeard.fence.json` has `"commitMemory": true`.
 - **Why:** Since 2026-09-25 `GREYBEARD.md` is personal and kept out of git via
   `.git/info/exclude`. Shared notes from several people drifted into a file
   nobody owned. The skills write the exclude; this is the net when it is
@@ -94,10 +95,15 @@ change them.
   public repo keeps every entry. That reason is gone with the commit; the
   "no secrets" rule stays in `greybeard-remember`, because the file is still
   loaded into every transcript.
-- **Ask, not deny:** This repo keeps its own `GREYBEARD.md` committed on
-  purpose, as contributor docs for the plugin. Committing a change to it here
-  asks once per commit; answer yes. A `deny` would make that impossible.
-- **If the ask fires on commits that do not include the file:** People learn
-  to answer yes without reading, and the net stops working. That is why it
-  checks the index and does not match on the command text alone.
+- **Deny, not ask:** It asked at first. Tested 2026-09-25 in auto mode: the
+  hook fired, the context reached the agent, and the commit went through with
+  no question to the human. An ask that never reaches a human is not a net.
+- **The exception:** This repo keeps its own `GREYBEARD.md` committed on
+  purpose, as contributor docs for the plugin, so it has `greybeard.fence.json`
+  with `"commitMemory": true`. That file is covered by `self.edit-fence`, so
+  only a human can open the exception. Broken JSON or anything but literal
+  `true` keeps it closed, the same rule as the fence.
+- **If it fires on commits that do not include the file:** People turn it off,
+  and the net is gone. That is why it checks the index and does not match on
+  the command text alone.
 - **Since:** 2026-09-04, rewritten 2026-09-25
