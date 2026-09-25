@@ -1,6 +1,6 @@
 {
   "name": "greybeard",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Greybeard mode. The agent that has seen it before: understands why the system looks the way it does, warns with concrete scenarios, knows when not to change anything, and keeps institutional memory in GREYBEARD.md.",
   "author": {
     "name": "Christoffer Johansson",
