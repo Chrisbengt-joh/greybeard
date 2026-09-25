@@ -2,88 +2,55 @@
 'use strict';
 // greybeard — PreToolUse hook, git commit only.
 //
-// GREYBEARD.md is committed, and in a public repo a commit is permanent:
-// deleting an entry later leaves it in the history, the clones and the forks.
-// This reads the file before the commit goes out and says what should not be
-// in it. It warns once per version of the file, not once per commit.
+// GREYBEARD.md is personal: one person's notes for their own agent, kept out
+// of git with .git/info/exclude. Shared notes from several people turn into a
+// file nobody owns and nobody trusts. The exclude is written by the skills that
+// create the file; this is the net for when it is missing, or when the file was
+// tracked before the rule existed. It asks, it does not deny: a repo can keep
+// its GREYBEARD.md committed on purpose, as this plugin's own repo does.
 
-const crypto = require('crypto');
-const fs = require('fs');
+const { spawnSync } = require('child_process');
 const path = require('path');
-const {
-  currentMode,
-  findMemoryFile,
-  getClaudeDir,
-  readMemoryFile,
-  readStdin,
-  writeHookOutput,
-} = require('./greybeard-runtime');
+const { currentMode, readStdin, writeHookOutput } = require('./greybeard-runtime');
 
 const EVENT = 'PreToolUse';
-const STATE_FILE = 'greybeard-scan.json';
+const MEMORY_FILE = 'GREYBEARD.md';
 
 // `git commit`, however it is spelled, but not `git commit --dry-run`.
 const IS_COMMIT = /\bgit\b[^\n|;&]*\bcommit\b/;
 const DRY_RUN = /--dry-run\b/;
+// Ways the same command line stages tracked changes before committing them:
+// `commit -a`, `-am`, `--all`, or a `git add` chained in front.
+const STAGES_TRACKED = /\bcommit\b[^\n|;&]*\s(?:-[a-zA-Z]*a[a-zA-Z]*|--all)\b|\bgit\s+add\b/;
 
-// Two classes. A secret is a mistake in any repo and asks for confirmation.
-// An exposure is only a problem depending on who can read the repo, so it is
-// said once and left to the user.
-const SECRETS = [
-  ['private key block', /-----BEGIN [A-Z ]*PRIVATE KEY-----/],
-  ['AWS access key id', /\bAKIA[0-9A-Z]{16}\b/],
-  ['GitHub token', /\bgh[pousr]_[A-Za-z0-9]{20,}\b/],
-  ['Slack token', /\bxox[baprs]-[A-Za-z0-9-]{10,}\b/],
-  ['credentials in a URL', /:\/\/[^\s/:@]+:[^\s/@]{3,}@/],
-  [
-    'assigned secret',
-    /\b(?:password|passwd|secret|api[_-]?key|access[_-]?token|private[_-]?key)\b\s*[:=]\s*["']?(?!<|\*|x{3,}|redacted|see\b)[^\s"'<>]{8,}/i,
-  ],
-];
-
-const EXPOSURES = [
-  [
-    'how to break it, not what breaks',
-    /\b(?:auth(?:entication|ori[sz]ation)?\s+bypass|unauthenticated\s+(?:access|endpoint|request)|no\s+auth\s+check|sql\s+injection|remote\s+code\s+execution|\brce\b|path\s+traversal|\bxss\b|\bcsrf\b|0-?day|exploit(?:able)?)\b/i,
-  ],
-  ['a named CVE', /\bCVE-\d{4}-\d{4,}\b/],
-  ['a private address', /\b(?:10\.\d{1,3}|192\.168|172\.(?:1[6-9]|2\d|3[01]))\.\d{1,3}\.\d{1,3}\b/],
-  ['an internal hostname', /\b[a-z0-9][a-z0-9-]*\.(?:internal|intranet|corp|local)\b/i],
-];
-
-function scan(text) {
-  const lines = text.split(/\r?\n/);
-  const hits = [];
-  lines.forEach((line, i) => {
-    for (const [label, re] of SECRETS) {
-      if (re.test(line)) hits.push({ kind: 'secret', label, line: i + 1 });
-    }
-    for (const [label, re] of EXPOSURES) {
-      if (re.test(line)) hits.push({ kind: 'exposure', label, line: i + 1 });
-    }
-  });
-  return hits;
+// 3 s per git call: the hook as a whole has 5 s in hooks.json, and a hook that
+// times out says nothing, which is the same as no net.
+function git(cwd, args) {
+  const res = spawnSync('git', args, { cwd, encoding: 'utf8', timeout: 3000 });
+  if (res.status !== 0) return null;
+  return res.stdout;
 }
 
-function statePath() {
-  return path.join(getClaudeDir(), STATE_FILE);
+function memoryPaths(output) {
+  return String(output || '')
+    .split('\0')
+    .filter((p) => p && path.basename(p) === MEMORY_FILE);
 }
 
-function readState() {
-  try {
-    return JSON.parse(fs.readFileSync(statePath(), 'utf8')) || {};
-  } catch (e) {
-    return {};
+// Which GREYBEARD.md files this command would put in the commit, if any.
+function memoryInCommit(cwd, command) {
+  const staged = git(cwd, ['diff', '--cached', '--name-only', '-z']);
+  if (staged === null) return []; // not a git repo, or no git: nothing to guard
+  const found = new Set(memoryPaths(staged));
+
+  if (STAGES_TRACKED.test(command)) {
+    // Tracked and changed: `-a` or the chained `git add` picks it up. An
+    // excluded, untracked file is not picked up by either, so it is not listed.
+    for (const p of memoryPaths(git(cwd, ['ls-files', '-m', '-z']))) found.add(p);
   }
-}
-
-function writeState(state) {
-  try {
-    fs.mkdirSync(getClaudeDir(), { recursive: true });
-    fs.writeFileSync(statePath(), JSON.stringify(state, null, 2) + '\n');
-  } catch (e) {
-    // best effort: without it the same version is reported again next commit
-  }
+  // `git add GREYBEARD.md && git commit` stages it after this hook has run.
+  if (/\bgit\s+add\b[^\n|;&]*GREYBEARD\.md/.test(command)) found.add(MEMORY_FILE);
+  return [...found];
 }
 
 readStdin((data) => {
@@ -92,50 +59,18 @@ readStdin((data) => {
   const command = String((data.tool_input || {}).command || '');
   if (!IS_COMMIT.test(command) || DRY_RUN.test(command)) return;
 
-  const file = findMemoryFile([data.cwd || process.cwd()]);
-  if (!file) return;
-
-  let text;
-  try {
-    text = readMemoryFile(file);
-  } catch (e) {
-    return;
-  }
-
-  // One warning per version of the file. Editing it earns a fresh look;
-  // committing ten times does not.
-  const digest = crypto.createHash('sha256').update(text).digest('hex');
-  const state = readState();
-  if (state[file] === digest) return;
-  state[file] = digest;
-  writeState(state);
-
-  const hits = scan(text);
-  if (hits.length === 0) return;
-
-  // Line numbers only. Repeating the value here would put it in the
-  // transcript as well as the commit.
-  const list = hits
-    .map((h) => '  ' + file + ':' + h.line + '  ' + h.label + (h.kind === 'secret' ? '  (secret)' : ''))
-    .join('\n');
-  const secrets = hits.filter((h) => h.kind === 'secret');
+  const files = memoryInCommit(data.cwd || process.cwd(), command);
+  if (files.length === 0) return;
 
   const context =
-    'GREYBEARD: this commit includes a repository that has ' + file + '. Before it goes out:\n\n' +
-    list +
-    '\n\nGREYBEARD.md is committed, and a public repo keeps it in the history, the ' +
-    'clones and the forks after any later deletion. Secrets do not belong in it at all. ' +
-    'For the rest: what breaks, not how to break it — reference a private ticket by id ' +
-    'instead of describing a live weakness. Tell the user what you found, by line, ' +
-    'without repeating the value.';
+    'GREYBEARD: this commit includes ' + files.join(', ') + '. GREYBEARD.md is personal ' +
+    'and stays out of git. Unless the user says this repo keeps it committed on purpose: ' +
+    'unstage it (`git restore --staged GREYBEARD.md`, or `git rm --cached GREYBEARD.md` ' +
+    'if it is tracked), add `GREYBEARD.md` to `.git/info/exclude`, and commit the rest.';
 
-  const extra = {};
-  if (secrets.length > 0) {
-    extra.permissionDecision = 'ask';
-    extra.permissionDecisionReason =
-      'greybeard: ' + path.basename(file) + ' line ' + secrets[0].line + ' looks like ' +
-      secrets[0].label + '. Committing it publishes it.';
-  }
-
-  writeHookOutput(EVENT, context, extra);
+  writeHookOutput(EVENT, context, {
+    permissionDecision: 'ask',
+    permissionDecisionReason:
+      'greybeard: ' + files.join(', ') + ' is personal and is about to be committed.',
+  });
 });
