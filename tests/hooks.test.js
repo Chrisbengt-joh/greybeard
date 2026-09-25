@@ -382,8 +382,9 @@ test('sweepStaleModes removes flags older than the cutoff and keeps the rest', (
 });
 
 // ---- commit scan ---------------------------------------------------------
-// GREYBEARD.md is personal. The hook asks when it is about to be committed and
-// is silent otherwise. Each test runs against a real git repo in projectDir.
+// GREYBEARD.md is personal. The hook denies a commit that would include it and
+// is silent otherwise. Deny, not ask: in auto mode an ask never reaches the
+// human. Each test runs against a real git repo in projectDir.
 
 function gitIn(...args) {
   const res = spawnSync('git', args, { cwd: projectDir, encoding: 'utf8' });
@@ -414,26 +415,26 @@ function commit(command, sessionId) {
   });
 }
 
-test('commit scan asks when GREYBEARD.md is staged', () => {
+test('commit scan denies when GREYBEARD.md is staged', () => {
   repo();
   fs.writeFileSync(path.join(projectDir, 'GREYBEARD.md'), MEMORY);
   gitIn('add', 'GREYBEARD.md');
   const out = commit();
-  assert.equal(out.permissionDecision, 'ask');
+  assert.equal(out.permissionDecision, 'deny');
   assert.match(out.permissionDecisionReason, /personal/);
-  assert.match(out.additionalContext, /\.git\/info\/exclude/);
+  assert.match(out.permissionDecisionReason, /\.git\/info\/exclude/);
 });
 
-test('commit scan asks when the same command line adds GREYBEARD.md', () => {
+test('commit scan denies when the same command line adds GREYBEARD.md', () => {
   repo();
   fs.writeFileSync(path.join(projectDir, 'GREYBEARD.md'), MEMORY);
-  assert.equal(commit('git add GREYBEARD.md && git commit -m x').permissionDecision, 'ask');
+  assert.equal(commit('git add GREYBEARD.md && git commit -m x').permissionDecision, 'deny');
 });
 
-test('commit scan asks on commit -a when GREYBEARD.md is tracked and changed', () => {
+test('commit scan denies on commit -a when GREYBEARD.md is tracked and changed', () => {
   trackedMemory();
-  assert.equal(commit('git commit -am x').permissionDecision, 'ask');
-  assert.equal(commit('git add . && git commit -m x').permissionDecision, 'ask');
+  assert.equal(commit('git commit -am x').permissionDecision, 'deny');
+  assert.equal(commit('git add . && git commit -m x').permissionDecision, 'deny');
   // Plain commit: the change is not staged, so it is not going in.
   assert.equal(commit('git commit -m x'), null);
 });
@@ -454,6 +455,25 @@ test('commit scan is silent on other commands, dry runs, and outside a repo', ()
   gitIn('add', 'GREYBEARD.md');
   assert.equal(commit('git status'), null);
   assert.equal(commit('git commit --dry-run -m x'), null);
+});
+
+test('commit scan allows it when greybeard.fence.json sets commitMemory', () => {
+  repo();
+  fs.writeFileSync(path.join(projectDir, 'GREYBEARD.md'), MEMORY);
+  fs.writeFileSync(path.join(projectDir, 'greybeard.fence.json'), '{ "commitMemory": true }\n');
+  gitIn('add', 'GREYBEARD.md');
+  assert.equal(commit(), null);
+});
+
+test('commit scan still denies when greybeard.fence.json is broken or says false', () => {
+  repo();
+  fs.writeFileSync(path.join(projectDir, 'GREYBEARD.md'), MEMORY);
+  gitIn('add', 'GREYBEARD.md');
+  // A broken config must not open the exception, same rule as the fence.
+  fs.writeFileSync(path.join(projectDir, 'greybeard.fence.json'), '{ "commitMemory": true,');
+  assert.equal(commit().permissionDecision, 'deny');
+  fs.writeFileSync(path.join(projectDir, 'greybeard.fence.json'), '{ "commitMemory": "yes" }\n');
+  assert.equal(commit().permissionDecision, 'deny', 'only literal true opens it');
 });
 
 test('commit scan says nothing when greybeard is off', () => {

@@ -6,15 +6,22 @@
 // of git with .git/info/exclude. Shared notes from several people turn into a
 // file nobody owns and nobody trusts. The exclude is written by the skills that
 // create the file; this is the net for when it is missing, or when the file was
-// tracked before the rule existed. It asks, it does not deny: a repo can keep
-// its GREYBEARD.md committed on purpose, as this plugin's own repo does.
+// tracked before the rule existed.
+//
+// Deny, not ask: in auto mode an ask is settled without the human, so the
+// commit went through with nobody asked (tested 2026-09-25). A repo that keeps
+// its GREYBEARD.md committed on purpose, as this plugin's own repo does, sets
+// "commitMemory": true in greybeard.fence.json. That file is covered by
+// self.edit-fence, so only a human can open the exception.
 
 const { spawnSync } = require('child_process');
+const fs = require('fs');
 const path = require('path');
-const { currentMode, readStdin, writeHookOutput } = require('./greybeard-runtime');
+const { currentMode, findUp, readStdin, stripBom, writeHookOutput } = require('./greybeard-runtime');
 
 const EVENT = 'PreToolUse';
 const MEMORY_FILE = 'GREYBEARD.md';
+const CONFIG_FILE = 'greybeard.fence.json';
 
 // `git commit`, however it is spelled, but not `git commit --dry-run`.
 const IS_COMMIT = /\bgit\b[^\n|;&]*\bcommit\b/;
@@ -29,6 +36,18 @@ function git(cwd, args) {
   const res = spawnSync('git', args, { cwd, encoding: 'utf8', timeout: 3000 });
   if (res.status !== 0) return null;
   return res.stdout;
+}
+
+// Only literal true opens the exception. Broken JSON keeps it closed, the
+// same rule as the fence: never fail in the permissive direction.
+function commitAllowed(cwd) {
+  const file = findUp(cwd, CONFIG_FILE);
+  if (!file) return false;
+  try {
+    return JSON.parse(stripBom(fs.readFileSync(file, 'utf8'))).commitMemory === true;
+  } catch (e) {
+    return false;
+  }
 }
 
 function memoryPaths(output) {
@@ -59,18 +78,19 @@ readStdin((data) => {
   const command = String((data.tool_input || {}).command || '');
   if (!IS_COMMIT.test(command) || DRY_RUN.test(command)) return;
 
-  const files = memoryInCommit(data.cwd || process.cwd(), command);
-  if (files.length === 0) return;
+  const cwd = data.cwd || process.cwd();
+  const files = memoryInCommit(cwd, command);
+  if (files.length === 0 || commitAllowed(cwd)) return;
 
-  const context =
-    'GREYBEARD: this commit includes ' + files.join(', ') + '. GREYBEARD.md is personal ' +
-    'and stays out of git. Unless the user says this repo keeps it committed on purpose: ' +
-    'unstage it (`git restore --staged GREYBEARD.md`, or `git rm --cached GREYBEARD.md` ' +
-    'if it is tracked), add `GREYBEARD.md` to `.git/info/exclude`, and commit the rest.';
+  const reason =
+    'greybeard: blocked, this commit includes ' + files.join(', ') + '. GREYBEARD.md is ' +
+    'personal and stays out of git. Unstage it (`git restore --staged GREYBEARD.md`, or ' +
+    '`git rm --cached GREYBEARD.md` if it is tracked), add `GREYBEARD.md` to ' +
+    '`.git/info/exclude`, and commit the rest. If this repo keeps it committed on ' +
+    'purpose, a human sets "commitMemory": true in greybeard.fence.json.';
 
-  writeHookOutput(EVENT, context, {
-    permissionDecision: 'ask',
-    permissionDecisionReason:
-      'greybeard: ' + files.join(', ') + ' is personal and is about to be committed.',
+  writeHookOutput(EVENT, reason, {
+    permissionDecision: 'deny',
+    permissionDecisionReason: reason,
   });
 });

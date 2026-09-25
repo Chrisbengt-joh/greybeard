@@ -51,9 +51,11 @@ your explicit go-ahead.
 
 **Before a commit** a second `PreToolUse` hook checks whether `GREYBEARD.md`
 is about to go in: staged, added on the same command line, or tracked and
-picked up by `commit -a`. If it is, it asks for confirmation and says how to
+picked up by `commit -a`. If it is, it blocks the commit and says how to
 unstage it and exclude it. `GREYBEARD.md` is personal and stays out of git;
-the hook is the net for when the exclude is missing.
+the hook is the net for when the exclude is missing. A repo that keeps its
+`GREYBEARD.md` committed on purpose, like this one, sets `"commitMemory": true`
+in `greybeard.fence.json`.
 
 **Before a command that cannot be taken back** a third `PreToolUse` hook,
 the fence, denies or asks: force pushes, history rewrites, `DROP TABLE`,
